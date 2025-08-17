@@ -9,7 +9,8 @@ import (
 	"os"
 	"sort"
 
-	"github.com/faiface/beep/wav"
+	"github.com/faiface/beep/mp3"
+	// "github.com/faiface/beep/wav"
 	"gonum.org/v1/gonum/dsp/fourier"
 )
 
@@ -30,7 +31,7 @@ func GetPeaksWindow(filePath string, windowSize int, overlapRatio float64, topN 
 	}
 	defer f.Close()
 
-	streamer, format, err := wav.Decode(f)
+	streamer, format, err := mp3.Decode(f)
 	if err != nil {
 		log.Fatal(err)
 	}
