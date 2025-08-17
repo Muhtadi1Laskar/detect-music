@@ -75,7 +75,7 @@ func extractTopNPeaks(coeffs []complex128, sampleRate float64, windowSize int, t
 		re := real(coeffs[i])
 		im := imag(coeffs[i])
 		// mag := math.Sqrt(re*re + im*im)
-		mag := 10 * math.Log10(re*re+im*im + 1e-12)
+		mag := 10 * math.Log10(re*re+im*im+1e-12)
 		freq := float64(i) * sampleRate / float64(windowSize)
 		peaks = append(peaks, Peak{Freq: freq, Mag: mag})
 	}
