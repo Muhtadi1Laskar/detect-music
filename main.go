@@ -1,14 +1,17 @@
 package main
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"math"
 	"os"
-	fourier "shazam/Fourier"
+	common "shazam/Common"
 	"sort"
 
 	"github.com/faiface/beep/wav"
+	"gonum.org/v1/gonum/dsp/fourier"
 )
 
 type Peak struct {
@@ -16,7 +19,12 @@ type Peak struct {
 	Mag  float64
 }
 
-func getPeakWindow(filePath string, windowSize int, overlapRatio float64, topN int) ([][]Peak, int) {
+type FingerPrints struct {
+	Hash      string
+	TimeIndex int
+}
+
+func getPeaksWindow(filePath string, windowSize int, overlapRatio float64, topN int) ([][]Peak, int) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		log.Fatal(err)
@@ -36,16 +44,24 @@ func getPeakWindow(filePath string, windowSize int, overlapRatio float64, topN i
 		if !ok || sample == 0 {
 			break
 		}
-		samples = append(samples, buf[0][0])
+		samples = append(samples, float64(buf[0][0]))
 	}
 
 	step := int(float64(windowSize) * (1 - overlapRatio))
 	var peakPerWindow [][]Peak
+	fft := fourier.NewFFT(windowSize)
 
 	for start := 0; start+windowSize <= len(samples); start += step {
 		window := samples[start : start+windowSize]
-		coeffs := fourier.DFT(window)
-		peaks := extractTopNPeaks(coeffs, float64(format.SampleRate.N(1)), windowSize, topN)
+
+		if len(window) != windowSize {
+			continue
+		}
+
+		// Compute FFT coefficients
+		coeffs := fft.Coefficients(nil, window)
+
+		peaks := extractTopNPeaks(coeffs, float64(format.SampleRate), windowSize, topN)
 		peakPerWindow = append(peakPerWindow, peaks)
 	}
 
@@ -53,11 +69,13 @@ func getPeakWindow(filePath string, windowSize int, overlapRatio float64, topN i
 }
 
 func extractTopNPeaks(coeffs []complex128, sampleRate float64, windowSize int, topN int) []Peak {
-	peaks := make([]Peak, 0, len(coeffs))
-	for i := range coeffs {
+	peaks := make([]Peak, 0, len(coeffs)/2) // Only need first half (real FFT symmetry)
+
+	for i := 1; i < len(coeffs)/2; i++ { // Skip DC component (i=0)
 		re := real(coeffs[i])
 		im := imag(coeffs[i])
-		mag := math.Sqrt(re*re + im*im)
+		// mag := math.Sqrt(re*re + im*im)
+		mag := 10 * math.Log10(re*re+im*im + 1e-12)
 		freq := float64(i) * sampleRate / float64(windowSize)
 		peaks = append(peaks, Peak{Freq: freq, Mag: mag})
 	}
@@ -72,11 +90,34 @@ func extractTopNPeaks(coeffs []complex128, sampleRate float64, windowSize int, t
 	return peaks
 }
 
-func main() {
-	samples := []float64{1, 2, 1, 2, 0, 0, 0, 0}
-	specturm := fourier.DFT(samples)
-
-	for i, j := range specturm {
-		fmt.Println(i, j)
+func buildFingerprints(peaksPerWindow [][]Peak, songID string) []FingerPrints {
+	var fps []FingerPrints
+	for winIdx, peaks := range peaksPerWindow {
+		for i := 0; i < len(peaks); i++ {
+			for j := i + 1; j < len(peaks); j++ {
+				key := fmt.Sprintf("%d|%d|0", int(peaks[i].Freq), int(peaks[j].Freq))
+				h := sha1.Sum([]byte(key))
+				fp := FingerPrints{
+					Hash:      hex.EncodeToString(h[:]),
+					TimeIndex: winIdx,
+				}
+				fps = append(fps, fp)
+			}
+		}
 	}
+	return fps
+}
+
+func main() {
+	windowSize := 4096
+	overlap := 0.5
+	topNPeaks := 5
+	songName := "sample"
+	path := common.GetFilePath(songName) // Replace with actual file path
+
+	peaksSong, _ := getPeaksWindow(path, windowSize, overlap, topNPeaks)
+	fpsSong := buildFingerprints(peaksSong, "song1")
+
+	fmt.Println("Generated", len(fpsSong), "fingerprints")
+	// fmt.Println(fpsSong)
 }
