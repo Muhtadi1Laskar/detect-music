@@ -13,11 +13,10 @@ func main() {
 	overlap := 0.5
 	topNPeaks := 5
 	songName := "sample"
-	path := common.GetFilePath(songName) // Replace with actual file path
+	path := common.GetFilePath(songName)
 
 	peaksSong, _ := transformation.GetPeaksWindow(path, windowSize, overlap, topNPeaks)
 	fpsSong := transformation.BuildFingerprints(peaksSong, "song1")
 
 	fmt.Println("Generated", len(fpsSong), "fingerprints")
-	// fmt.Println(fpsSong)
 }

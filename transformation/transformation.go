@@ -104,4 +104,3 @@ func BuildFingerprints(peaksPerWindow [][]Peak, songID string) []FingerPrints {
 	}
 	return fps
 }
-
