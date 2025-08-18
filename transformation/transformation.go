@@ -7,10 +7,12 @@ import (
 	"log"
 	"math"
 	"os"
+	database "shazam/Database"
 	"sort"
 
 	"github.com/faiface/beep/mp3"
 	// "github.com/faiface/beep/wav"
+	"github.com/dgraph-io/badger/v4"
 	"gonum.org/v1/gonum/dsp/fourier"
 )
 
@@ -68,7 +70,7 @@ func GetPeaksWindow(filePath string, windowSize int, overlapRatio float64, topN 
 }
 
 func extractTopNPeaks(coeffs []complex128, sampleRate float64, windowSize int, topN int) []Peak {
-	peaks := make([]Peak, 0, len(coeffs)/2) 
+	peaks := make([]Peak, 0, len(coeffs)/2)
 
 	for i := 1; i < len(coeffs)/2; i++ {
 		re := real(coeffs[i])
@@ -104,4 +106,29 @@ func BuildFingerprints(peaksPerWindow [][]Peak, songID string) []FingerPrints {
 		}
 	}
 	return fps
+}
+
+func MatchFingerprints(db *badger.DB, queryFingerprints []FingerPrints) {
+	score := make(map[string]int)
+
+	for _, q := range queryFingerprints {
+		if entries, err := database.LookupFingerprint(db, q.Hash); err == nil {
+			for _, e := range entries {
+				key := fmt.Sprintf("%s_%d", e.SongID, e.TimeOffset-q.TimeIndex)
+				score[key]++
+			}
+		}
+	}
+
+	bestKey := ""
+	bestCount := 0
+	for k, n := range score {
+		if n > bestCount {
+			bestCount = n
+			bestKey = k
+		}
+	}
+	fmt.Printf("\n\n\n")
+	fmt.Println("Best match:", bestKey, "count =", bestCount)
+	fmt.Printf("\n\n\n")
 }

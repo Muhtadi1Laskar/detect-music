@@ -3,7 +3,6 @@ package database
 import (
 	"encoding/json"
 	"log"
-	"shazam/transformation"
 
 	"github.com/dgraph-io/badger/v4"
 )
@@ -13,16 +12,6 @@ type DBEntry struct {
 	TimeOffset int
 }
 
-func StoreData(fpSongs []transformation.FingerPrints) map[string][]DBEntry {
-	db := make(map[string][]DBEntry)
-	for _, fp := range fpSongs {
-		db[fp.Hash] = append(db[fp.Hash], DBEntry{
-			SongID:     "song1",
-			TimeOffset: fp.TimeIndex,
-		})
-	}
-	return  db
-}
 
 func OpenBadger(path string) *badger.DB {
 	opts := badger.DefaultOptions(path)
