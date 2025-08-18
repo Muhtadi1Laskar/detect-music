@@ -21,14 +21,13 @@ func GetFullPath(path string) string {
 
 func GetFileNames() []string {
 	var result []string
-	// dirPath := "C:/Users/laska/OneDrive/Documents/Coding/Work/shazam-clone/audio"
 	dirPath := GetFullPath("../audio/")
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		log.Fatalf("Error reading directory: %v", err)
 	}
 	for _, entry := range entries {
-		if !entry.IsDir() { // Check if it's a file
+		if !entry.IsDir() {
 			result = append(result, entry.Name())
 		}
 	}
